@@ -291,3 +291,271 @@ module Arrays =
 
     printfn "The sum of the lengths of the words in Array 2 is: %d" sumOfLengthsOfWords
 
+
+module Sequences = 
+
+    /// This is the empty sequence.
+    let seq1 = Seq.empty
+
+    /// This a sequence of values.
+    let seq2 = seq { yield "hello"; yield "world"; yield "and"; yield "hello"; yield "world"; yield "again" }
+
+    /// This is an on-demand sequence from 1 to 1000.
+    let numbersSeq = seq { 1 .. 1000 }
+
+    /// This is a sequence producing the words "hello" and "world"
+    let seq3 = 
+        seq { for word in seq2 do
+                  if word.Contains("l") then 
+                      yield word }
+
+    /// This sequence producing the even numbers up to 2000.
+    let evenNumbers = Seq.init 1001 (fun n -> n * 2) 
+
+    let rnd = System.Random()
+
+    /// This is an infinite sequence which is a random walk.
+    /// This example uses yield! to return each element of a subsequence.
+    let rec randomWalk x =
+        seq { yield x
+              yield! randomWalk (x + rnd.NextDouble() - 0.5) }
+
+    /// This example shows the first 100 elements of the random walk.
+    let first100ValuesOfRandomWalk = 
+        randomWalk 5.0 
+        |> Seq.truncate 100
+        |> Seq.toList
+
+    printfn "First 100 elements of a random walk: %A" first100ValuesOfRandomWalk
+
+
+module RecursiveFunctions = 
+              
+    /// This example shows a recursive function that computes the factorial of an 
+    /// integer. It uses 'let rec' to define a recursive function.
+    let rec factorial n = 
+        if n = 0 then 1 else n * factorial (n-1)
+
+    printfn "Factorial of 6 is: %d" (factorial 6)
+
+    /// Computes the greatest common factor of two integers.
+    ///
+    /// Since all of the recursive calls are tail calls,
+    /// the compiler will turn the function into a loop,
+    /// which improves performance and reduces memory consumption.
+    let rec greatestCommonFactor a b =
+        if a = 0 then b
+        elif a < b then greatestCommonFactor a (b - a)
+        else greatestCommonFactor (a - b) b
+
+    printfn "The Greatest Common Factor of 300 and 620 is %d" (greatestCommonFactor 300 620)
+
+    /// This example computes the sum of a list of integers using recursion.
+    let rec sumList xs =
+        match xs with
+        | []    -> 0
+        | y::ys -> y + sumList ys
+
+    /// This makes 'sumList' tail recursive, using a helper function with a result accumulator.
+    let rec private sumListTailRecHelper accumulator xs =
+        match xs with
+        | []    -> accumulator
+        | y::ys -> sumListTailRecHelper (accumulator+y) ys
+    
+    /// This invokes the tail recursive helper function, providing '0' as a seed accumulator.
+    /// An approach like this is common in F#.
+    let sumListTailRecursive xs = sumListTailRecHelper 0 xs
+
+    let oneThroughTen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
+
+    printfn "The sum 1-10 is %d" (sumListTailRecursive oneThroughTen)
+
+module RecordTypes = 
+
+    /// This example shows how to define a new record type.  
+    type ContactCard = 
+        { Name     : string
+          Phone    : string
+          Verified : bool }
+              
+    /// This example shows how to instantiate a record type.
+    let contact1 = 
+        { Name = "Alf" 
+          Phone = "(206) 555-0157" 
+          Verified = false }
+
+    /// You can also do this on the same line with ';' separators.
+    let contactOnSameLine = { Name = "Alf"; Phone = "(206) 555-0157"; Verified = false }
+
+    /// This example shows how to use "copy-and-update" on record values. It creates 
+    /// a new record value that is a copy of contact1, but has different values for 
+    /// the 'Phone' and 'Verified' fields.
+    ///
+    /// To learn more, see: https://docs.microsoft.com/dotnet/fsharp/language-reference/copy-and-update-record-expressions
+    let contact2 = 
+        { contact1 with 
+            Phone = "(206) 555-0112"
+            Verified = true }
+
+    /// This example shows how to write a function that processes a record value.
+    /// It converts a 'ContactCard' object to a string.
+    let showContactCard (c: ContactCard) = 
+        c.Name + " Phone: " + c.Phone + (if not c.Verified then " (unverified)" else "")
+
+    printfn "Alf's Contact Card: %s" (showContactCard contact1)
+
+    /// This is an example of a Record with a member.
+    type ContactCardAlternate =
+        { Name     : string
+          Phone    : string
+          Address  : string
+          Verified : bool }
+
+        /// Members can implement object-oriented members.
+        member this.PrintedContactCard =
+            this.Name + " Phone: " + this.Phone + (if not this.Verified then " (unverified)" else "") + this.Address
+
+    let contactAlternate = 
+        { Name = "Alf" 
+          Phone = "(206) 555-0157" 
+          Verified = false 
+          Address = "111 Alf Street" }
+   
+    // Members are accessed via the '.' operator on an instantiated type.
+    printfn "Alf's alternate contact card is %s" contactAlternate.PrintedContactCard
+
+    /// Records can also be represented as structs via the 'Struct' attribute.
+    /// This is helpful in situations where the performance of structs outweighs
+    /// the flexibility of reference types.
+    [<Struct>]
+    type ContactCardStruct = 
+        { Name     : string
+          Phone    : string
+          Verified : bool }
+
+
+
+module DiscriminatedUnions = 
+
+    /// The following represents the suit of a playing card.
+    type Suit = 
+        | Hearts 
+        | Clubs 
+        | Diamonds 
+        | Spades
+
+    /// A Discriminated Union can also be used to represent the rank of a playing card.
+    type Rank = 
+        /// Represents the rank of cards 2 .. 10
+        | Value of int
+        | Ace
+        | King
+        | Queen
+        | Jack
+
+        /// Discriminated Unions can also implement object-oriented members.
+        static member GetAllRanks() = 
+            [ yield Ace
+              for i in 2 .. 10 do yield Value i
+              yield Jack
+              yield Queen
+              yield King ]
+                                   
+    /// This is a record type that combines a Suit and a Rank.
+    /// It's common to use both Records and Discriminated Unions when representing data.
+    type Card = { Suit: Suit; Rank: Rank }
+              
+    /// This computes a list representing all the cards in the deck.
+    let fullDeck = 
+        [ for suit in [ Hearts; Diamonds; Clubs; Spades] do
+              for rank in Rank.GetAllRanks() do 
+                  yield { Suit=suit; Rank=rank } ]
+
+    /// This example converts a 'Card' object to a string.
+    let showPlayingCard (c: Card) = 
+        let rankString = 
+            match c.Rank with 
+            | Ace -> "Ace"
+            | King -> "King"
+            | Queen -> "Queen"
+            | Jack -> "Jack"
+            | Value n -> string n
+        let suitString = 
+            match c.Suit with 
+            | Clubs -> "clubs"
+            | Diamonds -> "diamonds"
+            | Spades -> "spades"
+            | Hearts -> "hearts"
+        rankString  + " of " + suitString
+
+    /// This example prints all the cards in a playing deck.
+    let printAllCards() = 
+        for card in fullDeck do 
+            printfn "%s" (showPlayingCard card)
+
+
+    // Single-case DUs are often used for domain modeling.  This can buy you extra type safety
+    // over primitive types such as strings and ints.
+    //
+    // Single-case DUs cannot be implicitly converted to or from the type they wrap.
+    // For example, a function which takes in an Address cannot accept a string as that input,
+    // or vice versa.
+    type Address = Address of string
+    type Name = Name of string
+    type SSN = SSN of int
+
+    // You can easily instantiate a single-case DU as follows.
+    let address = Address "111 Alf Way"
+    let name = Name "Alf"
+    let ssn = SSN 1234567890
+
+    /// When you need the value, you can unwrap the underlying value with a simple function.
+    let unwrapAddress (Address a) = a
+    let unwrapName (Name n) = n
+    let unwrapSSN (SSN s) = s
+
+    // Printing single-case DUs is simple with unwrapping functions.
+    printfn "Address: %s, Name: %s, and SSN: %d" (address |> unwrapAddress) (name |> unwrapName) (ssn |> unwrapSSN)
+
+    /// Discriminated Unions also support recursive definitions.
+    ///
+    /// This represents a Binary Search Tree, with one case being the Empty tree,
+    /// and the other being a Node with a value and two subtrees.
+    type BST<'T> =
+        | Empty
+        | Node of value:'T * left: BST<'T> * right: BST<'T>
+
+    /// Check if an item exists in the binary search tree.
+    /// Searches recursively using Pattern Matching.  Returns true if it exists; otherwise, false.
+    let rec exists item bst =
+        match bst with
+        | Empty -> false
+        | Node (x, left, right) ->
+            if item = x then true
+            elif item < x then (exists item left) // Check the left subtree.
+            else (exists item right) // Check the right subtree.
+
+    /// Inserts an item in the Binary Search Tree.
+    /// Finds the place to insert recursively using Pattern Matching, then inserts a new node.
+    /// If the item is already present, it does not insert anything.
+    let rec insert item bst =
+        match bst with
+        | Empty -> Node(item, Empty, Empty)
+        | Node(x, left, right) as node ->
+            if item = x then node // No need to insert, it already exists; return the node.
+            elif item < x then Node(x, insert item left, right) // Call into left subtree.
+            else Node(x, left, insert item right) // Call into right subtree.
+
+
+    /// Discriminated Unions can also be represented as structs via the 'Struct' attribute.
+    /// This is helpful in situations where the performance of structs outweighs
+    /// the flexibility of reference types.
+    ///
+    /// However, there are two important things to know when doing this:
+    ///     1. A struct DU cannot be recursively-defined.
+    ///     2. A struct DU must have unique names for each of its cases.
+    [<Struct>]
+    type Shape =
+        | Circle of radius: float
+        | Square of side: float
+        | Triangle of height: float * width: float
