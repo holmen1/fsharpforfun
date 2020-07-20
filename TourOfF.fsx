@@ -34,7 +34,7 @@ module BasicFunctions =
 
 
 
-    module Immutability =
+module Immutability =
 
     /// Binding a value to a name via 'let' makes it immutable.
     ///
@@ -56,7 +56,7 @@ module BasicFunctions =
     printfn "'otherNumber' changed to be %d" otherNumber
 
 
-   module IntegersAndNumbers = 
+module IntegersAndNumbers = 
 
     /// This is a sample integer.
     let sampleInteger = 176
@@ -117,21 +117,6 @@ module StringManipulation =
     printfn "%s" substring
 
 
-
-module Tuples =
-
-    /// A simple tuple of integers.
-    let tuple1 = (1, 2, 3)
-
-    /// A function that swaps the order of two values in a tuple. 
-    ///
-    /// F# Type Inference will automatically generalize the function to have a generic type,
-    /// meaning that it will work with any type.
-    let swapElems (a, b) = (b, a)
-
-    printfn "The result of swapping (1, 2) is %A" (swapElems (1,2))
-
-
 module PipelinesAndComposition =
 
     /// Squares a value.
@@ -188,6 +173,20 @@ module PipelinesAndComposition =
         |> List.map(fun x -> x |> square |> addOne)
 
     printfn "processing %A through 'squareOddValuesAndAddOneShorterPipeline' produces: %A" numbers (squareOddValuesAndAddOneShorterPipeline numbers)
+
+
+module Tuples =
+
+    /// A simple tuple of integers.
+    let tuple1 = (1, 2, 3)
+
+    /// A function that swaps the order of two values in a tuple. 
+    ///
+    /// F# Type Inference will automatically generalize the function to have a generic type,
+    /// meaning that it will work with any type.
+    let swapElems (a, b) = (b, a)
+
+    printfn "The result of swapping (1, 2) is %A" (swapElems (1,2))
 
     /// A tuple consisting of an integer, a string,
     /// and a double-precision floating point number.
@@ -559,3 +558,116 @@ module DiscriminatedUnions =
         | Circle of radius: float
         | Square of side: float
         | Triangle of height: float * width: float
+
+
+module PatternMatching =
+
+    /// A record for a person's first and last name
+    type Person = {
+        First : string
+        Last  : string
+    }
+
+    /// A Discriminated Union of 3 different kinds of employees
+    type Employee =
+        | Engineer of engineer: Person
+        | Manager of manager: Person * reports: List<Employee>
+        | Executive of executive: Person * reports: List<Employee> * assistant: Employee
+
+    /// Count everyone underneath the employee in the management hierarchy,
+    /// including the employee. The matches bind names to the properties 
+    /// of the cases so that those names can be used inside the match branches.
+    /// Note that the names used for binding do not need to be the same as the 
+    /// names given in the DU definition above.
+    let rec countReports(emp : Employee) =
+        1 + match emp with
+            | Engineer(person) ->
+                0
+            | Manager(person, reports) ->
+                reports |> List.sumBy countReports
+            | Executive(person, reports, assistant) ->
+                (reports |> List.sumBy countReports) + countReports assistant
+
+
+    /// Find all managers/executives named "Dave" who do not have any reports.
+    /// This uses the 'function' shorthand to as a lambda expression.
+    let rec findDaveWithOpenPosition(emps : List<Employee>) =
+        emps
+        |> List.filter(function
+                       | Manager({First = "Dave"}, []) -> true // [] matches an empty list.
+                       | Executive({First = "Dave"}, [], _) -> true
+                       | _ -> false) // '_' is a wildcard pattern that matches anything.
+                                     // This handles the "or else" case.
+
+
+    open System
+
+    /// You can also use the shorthand function construct for pattern matching, 
+    /// which is useful when you're writing functions which make use of Partial Application.
+    let private parseHelper (f: string -> bool * 'T) = f >> function
+        | (true, item) -> Some item
+        | (false, _) -> None
+
+    let parseDateTimeOffset = parseHelper DateTimeOffset.TryParse
+
+    let result = parseDateTimeOffset "1970-01-01"
+    match result with
+    | Some dto -> printfn "It parsed!"
+    | None -> printfn "It didn't parse!"
+
+    // Define some more functions which parse with the helper function.
+    let parseInt = parseHelper Int32.TryParse
+    let parseDouble = parseHelper Double.TryParse
+    let parseTimeSpan = parseHelper TimeSpan.TryParse
+
+    // Active Patterns are another powerful construct to use with pattern matching.
+    // They allow you to partition input data into custom forms, decomposing them at the pattern match call site. 
+    //
+    // To learn more, see: https://docs.microsoft.com/dotnet/fsharp/language-reference/active-patterns
+    let (|Int|_|) = parseInt
+    let (|Double|_|) = parseDouble
+    let (|Date|_|) = parseDateTimeOffset
+    let (|TimeSpan|_|) = parseTimeSpan
+
+    /// Pattern Matching via 'function' keyword and Active Patterns often looks like this.
+    let printParseResult = function
+        | Int x -> printfn "%d" x
+        | Double x -> printfn "%f" x
+        | Date d -> printfn "%s" (d.ToString())
+        | TimeSpan t -> printfn "%s" (t.ToString())
+        | _ -> printfn "Nothing was parse-able!"
+
+    // Call the printer with some different values to parse.
+    printParseResult "12"
+    printParseResult "12.045"
+    printParseResult "12/28/2016"
+    printParseResult "9:01PM"
+    printParseResult "banana!"
+
+
+/// Option values are any kind of value tagged with either 'Some' or 'None'.
+/// They are used extensively in F# code to represent the cases where many other
+/// languages would use null references.
+///
+/// To learn more, see: https://docs.microsoft.com/dotnet/fsharp/language-reference/options
+module OptionValues = 
+
+    /// First, define a zip code defined via Single-case Discriminated Union.
+    type ZipCode = ZipCode of string
+
+    /// Next, define a type where the ZipCode is optional.
+    type Customer = { ZipCode: ZipCode option }
+
+    /// Next, define an interface type that represents an object to compute the shipping zone for the customer's zip code, 
+    /// given implementations for the 'getState' and 'getShippingZone' abstract methods.
+    type IShippingCalculator =
+        abstract GetState : ZipCode -> string option
+        abstract GetShippingZone : string -> int
+
+    /// Next, calculate a shipping zone for a customer using a calculator instance.
+    /// This uses combinators in the Option module to allow a functional pipeline for
+    /// transforming data with Optionals.
+    let CustomerShippingZone (calculator: IShippingCalculator, customer: Customer) =
+        customer.ZipCode 
+        |> Option.bind calculator.GetState 
+        |> Option.map calculator.GetShippingZone
