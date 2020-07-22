@@ -44,13 +44,27 @@ let START  = EMPTY
 
 
 //type RPN = string -> int list
-let rec RPN stringl stack =
+let rec RPN0 stringl stack =
     match stringl with
     | [] -> stack
-    | x::tail -> RPN tail (push x stack)
+    | x::tail -> RPN0 tail (push x stack)
 
 
-// Test
+// Test 0
 let stack0 = EMPTY
 let l0 = [1;2;3;4]
-let s0 = RPN l0 stack0
+let s0 = RPN0 l0 stack0
+
+let isOperator str =
+    List.contains str ["+"; "-"; "*"; "/"]
+
+let rec RPN1 stringl stack =
+    match stringl with
+    | [] -> stack
+    | (notO & head) :: tail when not (isOperator notO) -> RPN1 tail (push (int head) stack)
+
+// Test 1
+let stack0 = EMPTY
+let l1 = ["1";"2";"3";"4"]
+let s1 = RPN1 l1 stack0
+    
