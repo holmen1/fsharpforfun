@@ -67,4 +67,72 @@ let rec RPN1 stringl stack =
 let stack0 = EMPTY
 let l1 = ["1";"2";"3";"4"]
 let s1 = RPN1 l1 stack0
-    
+
+
+// Finally
+
+type Stack = StackContents of float list
+
+// ==============================================
+// Stack primitives
+// ==============================================
+
+/// Push a value on the stack
+let push x (StackContents contents) =   
+    StackContents (x::contents)
+
+/// Pop a value from the stack and return it 
+/// and the new stack as a tuple
+let pop (StackContents contents) = 
+    match contents with 
+    | top::rest -> 
+        let newStack = StackContents rest
+        (top,newStack)
+    | [] -> 
+        failwith "Stack underflow"
+
+// ==============================================
+// Operator core
+// ==============================================
+
+// pop the top two elements
+// do a binary operation on them
+// push the result
+let binary mathFn stack = 
+    let y,stack' = pop stack    
+    let x,stack'' = pop stack'  
+    let z = mathFn x y
+    push z stack''  
+
+// Constants
+// -------------------------------
+let EMPTY = StackContents []
+let START  = EMPTY
+
+let op str =
+    match str with
+   | "+" -> binary (+)
+   | "-" -> binary (-)
+   | "*" -> binary (*)
+   | "/" -> binary (/)
+
+let rec RPN stringl stack =
+    match stringl with
+    | [] -> stack
+    | (noOp & head) :: tail when not (isOperator noOp) -> RPN tail (push (float head) stack)
+    | head :: tail -> RPN tail (op head stack)
+
+// Test
+let reqstring = "4 3 + 2 *"
+let stack = EMPTY
+let reqlist = words reqstring
+let result = RPN reqlist stack
+let x,_ = pop result
+printfn "The answer is %f" x
+
+let reqstring = "4 3 + 2 * 3 /"
+let stack = EMPTY
+let reqlist = words reqstring
+let result = RPN reqlist stack
+let x,_ = pop result
+printfn "The answer to %s is %f" reqstring x
